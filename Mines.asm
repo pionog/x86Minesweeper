@@ -10,7 +10,13 @@ setup:
 	mov ax, 0B800H					; nie mozna bezposrednio przypisac stalej liczbowej do es, wiec trzeba najpierw do dostepnego rejestru
 	mov es, ax						; ES:DI = B800:0000, gdzie DI bedzie wyzerowany w cyklu
 
-game:
+	; ustawienie kursora na pozycji startowej
+	mov ah, 0x2						; tryb ustawienia kursora
+	mov dh, [currentRow]			; przypisanie do dh liczby obecnego wiersza
+	mov dl, [currentColumn]			; przypisanie do dl liczby obecnej kolumny
+	int 10h							; wywolanie odpowiedniego przerwania
+
+
 
 	; glowna petla rysujaca tablice
 	screen:
@@ -37,10 +43,10 @@ game:
 				row:	
 					mov ax, 2F7CH		; bialy znak na zielonym tle (2F), znak '|' (2D)
 					stosw
-					inc di				; podwojny inc di, by przejsc dwie pozycje dalej
-					inc di
-					;mov ax, 2F23H		; bialy znak na zielonym tle (2F), znak '#' (23)
-					;stosw
+					;inc di				; podwojny inc di, by przejsc dwie pozycje dalej
+					;inc di
+					mov ax, 2F23H		; bialy znak na zielonym tle (2F), znak '#' (23)
+					stosw
 					loop row
 				mov ax, 2F7CH			; bialy znak na zielonym tle (2F), znak '|' (2D)
 				stosw
@@ -55,17 +61,111 @@ game:
 				mov cx, 21					; 21 znakow
 				rep stosw
 
-		; opoznianie czasu do nastepnego cyklu, dzieki czemu ekran nie miga zbyt czesto
-		cycle:
-			mov bx, [046CH]				; pobranie wartosci tick od momentu uruchomienia programu
-			inc bx
-			inc bx
-			inc bx
-			.delay:
-				cmp [046CH], bx			; sprawdzanie czy minelo odpowiednio duzo zasu na odswiezenie ekranu
-				jl .delay
+				mov di, 80*3*2 + 31*2
+
+
+		;; opoznianie czasu do nastepnego cyklu, dzieki czemu ekran nie miga zbyt czesto
+		;cycle:
+		;	mov bx, [046CH]				; pobranie wartosci tick od momentu uruchomienia programu
+		;	inc bx
+		;	inc bx
+		;	inc bx
+		;	delay:
+		;		cmp [046CH], bx			; sprawdzanie czy minelo odpowiednio duzo zasu na odswiezenie ekranu
+		;		jl delay
+game:			
+	move:
+		
+		mov dh, [currentRow]			; pobieranie obecnej wartosci wiersza
+		mov dl, [currentColumn]			; pobieranie obecnej wartosci kolumny
+
+		xor ah,ah						; zerowanie ah
+		int 16h					; pobranie klawisza
+
+		cursor:
+			direction:
+				cmp al, 'w' ; 'w' - up
+				je up
+				cmp al, 'a' ; 'a' - left
+				je left
+				cmp al, 's' ; 's' - down
+				je down
+				cmp al, 'd' ; 'd' - right
+				je right
+				cmp al, 0DH ; enter
+				je enter
+				cmp al, 20H
+				je space
+				jmp game
+
+			; enter odslania dane pole
+			enter:
+				mov ax, 2F00H				; bialy znak na zielonym tle (2F), znak ' ' (00)
+				mov [es:di], ax				
+				jmp nofail
+
+			; spacja ustawia flage na danym polu
+			space:
+				mov ax, [es:di]			; pobierz znak z danego pola
+				cmp ax, 20H				; jesli jest to puste pole, to nic nie rob
+				je nofail
+				cmp al, 0DH				; jesli to pole zawiera flage, to ja zdejmij
+				je takeFlag
+				mov ax, 200DH
+				mov [es:di], ax
+				jmp nofail
+				takeFlag:
+				mov ax, 2F23H
+				mov [es:di], ax
+				jmp nofail
+
+			right:
+				cmp dl, 49
+				je fail
+				inc dl
+				inc dl
+				mov [currentColumn], dl
+				add di, 4
+				jmp nofail
+	
+			up:
+				cmp dh, 3
+				je fail
+				dec dh
+				dec dh
+				mov [currentRow], dh
+				sub di, 320
+				jmp nofail
+
+			down:
+				cmp dh, 21
+				je fail
+				inc dh
+				inc dh
+				mov [currentRow], dh
+				add di, 320
+				jmp nofail
+	
+			left:
+				cmp dl, 31
+				je fail
+				dec dl
+				dec dl
+				mov [currentColumn], dl
+				sub di, 4
+
+			nofail:
+				mov ah, 0x2
+				mov dh, [currentRow]
+				mov dl, [currentColumn]
+				int 10h
+
+			fail:
 
 	jmp game
+
+currentRow db 3
+currentColumn db 31
 
 times 510-($-$$) db 0			; zerowanie niewykorzystanego miejsca
 dw 0AA55H						; zakonczenie pliku sygnatura 
