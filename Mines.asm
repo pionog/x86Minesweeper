@@ -102,63 +102,62 @@ game:
 			enter:
 				mov ax, 2F00H				; bialy znak na zielonym tle (2F), znak ' ' (00)
 				mov [es:di], ax				
-				jmp nofail
+				jmp nofail	
 
 			; spacja ustawia flage na danym polu
 			space:
 				mov ax, [es:di]			; pobierz znak z danego pola
-				cmp ax, 20H				; jesli jest to puste pole, to nic nie rob
+				cmp ax, 2F00H			; jesli jest to puste pole, to nic nie rob
 				je nofail
 				cmp al, 0DH				; jesli to pole zawiera flage, to ja zdejmij
 				je takeFlag
-				mov ax, 200DH
+				; ustawienie danego pola jako oznaczonego flaga
+				mov ax, 200DH			
 				mov [es:di], ax
 				jmp nofail
+				; ponowne ustawienie "niewiadomego" pola
 				takeFlag:
 				mov ax, 2F23H
 				mov [es:di], ax
 				jmp nofail
 
+			; pojscie w prawo
 			right:
-				cmp dl, 49
+				cmp dl, 49						; sprawdzanie, czy kursor nie wykracza poza tabele z prawej strony
 				je fail
-				inc dl
-				inc dl
-				mov [currentColumn], dl
-				add di, 4
+				inc byte [currentColumn]		; zwiekszenie obecnej kolumny o dwa - przesuniecie w prawo o dwa pola
+				inc byte [currentColumn]
+				add di, 4						; przesuniecie rysowania o dwa pola w prawo
 				jmp nofail
 	
 			up:
-				cmp dh, 3
+				cmp dh, 3						; sprawdzanie, czy kursor nie wykracza poza tabele z gornej strony
 				je fail
-				dec dh
-				dec dh
-				mov [currentRow], dh
-				sub di, 320
+				dec byte [currentRow]			; zmniejszenie obecnego wiersza o dwa - przesuniecie w gore o dwa pola
+				dec byte [currentRow]
+				sub di, 320						; przesuniecie rysowania w gore o dwa pola
 				jmp nofail
 
 			down:
-				cmp dh, 21
+				cmp dh, 21						; sprawdzanie, czy kursor nie wykracza poza tabele z dolnej strony
 				je fail
-				inc dh
-				inc dh
-				mov [currentRow], dh
-				add di, 320
+				inc byte [currentRow]			; zwiekszenie obecnego wiersza o dwa - przesuniecie w dol o dwa pola
+				inc byte [currentRow]
+				add di, 320						; przesuniecie rysowania w dol o dwa pola
 				jmp nofail
 	
 			left:
-				cmp dl, 31
+				cmp dl, 31						; sprawdzanie, czy kursor nie wykracza poza tabele z lewej strony
 				je fail
-				dec dl
-				dec dl
-				mov [currentColumn], dl
-				sub di, 4
+				dec byte [currentColumn]		; zmniejszenie obecnej kolumny o dwa - przesuniecie w lewo o dwa pola
+				dec byte [currentColumn]
+				sub di, 4						; przesuniecie rysowania o dwa pola w lewo
 
 			nofail:
-				mov ah, 0x2
-				mov dh, [currentRow]
-				mov dl, [currentColumn]
-				int 10h
+				mov ah, 0x2						; tryb ustawienia kursora
+				mov dh, [currentRow]			; przypisanie do dh liczby obecnego wiersza
+				mov dl, [currentColumn]			; przypisanie do dl liczby obecnej kolumny
+				int 10h							; wywolanie odpowiedniego przerwania
 
 			fail:
 
