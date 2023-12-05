@@ -104,77 +104,65 @@ game:
 			enter:
 				mov ax, 2F00H				; bialy znak na zielonym tle (2F), znak ' ' (00)
 				mov [es:di], ax				
-				jmp nofail	
+				jmp moveCursor	
 
 			; spacja ustawia flage na danym polu
 			space:
 				mov ax, [es:di]			; pobierz znak z danego pola
 				cmp ax, 2F00H			; jesli jest to puste pole, to nic nie rob
-				je nofail
+				je moveCursor
 				cmp al, 0DH				; jesli to pole zawiera flage, to ja zdejmij
 				je takeFlag
 				; ustawienie danego pola jako oznaczonego flaga
 				mov ax, 200DH			
 				mov [es:di], ax
-				jmp nofail
+				jmp moveCursor
 				; ponowne ustawienie "niewiadomego" pola
 				takeFlag:
 				mov ax, 2F23H
 				mov [es:di], ax
-				jmp nofail
+				jmp moveCursor
 
 			; pojscie w prawo
 			right:
 				cmp dl, 49						; sprawdzanie, czy kursor nie wykracza poza tabele z prawej strony
-				je failRight
+				je moveCursor
 				inc byte [currentColumn]		; zwiekszenie obecnej kolumny o dwa - przesuniecie w prawo o dwa pola
 				inc byte [currentColumn]
 				add di, 4						; przesuniecie rysowania o dwa pola w prawo
 				and byte [boundary], 00001010b	; resetowanie horyzontalnej pozycji kursora przy granicy
-				jmp nofail
+				jmp moveCursor
 	
 			up:
 				cmp dh, 3						; sprawdzanie, czy kursor nie wykracza poza tabele z gornej strony
-				je failUp
+				je moveCursor
 				dec byte [currentRow]			; zmniejszenie obecnego wiersza o dwa - przesuniecie w gore o dwa pola
 				dec byte [currentRow]
 				sub di, 320						; przesuniecie rysowania w gore o dwa pola
 				and byte [boundary], 00000101b	; resetowanie wertykalnej pozycji kursora przy granicy
-				jmp nofail
+				jmp moveCursor
 
 			down:
 				cmp dh, 21						; sprawdzanie, czy kursor nie wykracza poza tabele z dolnej strony
-				je failDown
+				je moveCursor
 				inc byte [currentRow]			; zwiekszenie obecnego wiersza o dwa - przesuniecie w dol o dwa pola
 				inc byte [currentRow]
 				add di, 320						; przesuniecie rysowania w dol o dwa pola
 				and byte [boundary], 00000101b	; resetowanie wertykalnej pozycji kursora przy granicy
-				jmp nofail
+				jmp moveCursor
 	
 			left:
 				cmp dl, 31						; sprawdzanie, czy kursor nie wykracza poza tabele z lewej strony
-				je failLeft
+				je moveCursor
 				dec byte [currentColumn]		; zmniejszenie obecnej kolumny o dwa - przesuniecie w lewo o dwa pola
 				dec byte [currentColumn]
 				sub di, 4						; przesuniecie rysowania o dwa pola w lewo
 				and byte [boundary], 00001010b	; resetowanie horyzontalnej pozycji kursora przy granicy
-				jmp nofail
+				jmp moveCursor
 			
 
-			failRight:
-				or byte [boundary], 00000001b	; ustawianie, ze kursor jest przy prawej granicy tablicy
-				jmp game
-			failDown:
-				or byte [boundary], 00000010b	; ustawianie, ze kursor jest przy dolnej granicy tablicy
-				jmp game
-			failLeft:
-				or byte [boundary], 00000100b	; ustawianie, ze kursor jest przy lewej granicy tablicy
-				jmp game
-			failUp:
-				or byte [boundary], 00001000b	; ustawianie, ze kursor jest przy gornej granicy tablicy
-				jmp game
 
-			nofail:
+			moveCursor:
 				mov ah, 0x2						; tryb ustawienia kursora
 				mov dh, [currentRow]			; przypisanie do dh liczby obecnego wiersza
 				mov dl, [currentColumn]			; przypisanie do dl liczby obecnej kolumny
@@ -184,8 +172,6 @@ game:
 
 currentRow db 3
 currentColumn db 31
-boundary db	12				; pozycja kursora wzgledem granic tablicy. jesli jest przy danej granicy, to trzeba ustawic odpowiwedni bit na 1. 00001111b 0x15
-							; w kolejnosci LSB: prawo, dol, lewo, gora. w poczatkowej pozycji kursor jest w lewym gornym rogu, zatem bedzie to 00001100b czyli 0x12
 
 
 times 510-($-$$) db 0			; zerowanie niewykorzystanego miejsca
