@@ -130,7 +130,6 @@ game:
 				inc byte [currentColumn]		; zwiekszenie obecnej kolumny o dwa - przesuniecie w prawo o dwa pola
 				inc byte [currentColumn]
 				add di, 4						; przesuniecie rysowania o dwa pola w prawo
-				and byte [boundary], 00001010b	; resetowanie horyzontalnej pozycji kursora przy granicy
 				jmp moveCursor
 	
 			up:
@@ -139,7 +138,6 @@ game:
 				dec byte [currentRow]			; zmniejszenie obecnego wiersza o dwa - przesuniecie w gore o dwa pola
 				dec byte [currentRow]
 				sub di, 320						; przesuniecie rysowania w gore o dwa pola
-				and byte [boundary], 00000101b	; resetowanie wertykalnej pozycji kursora przy granicy
 				jmp moveCursor
 
 			down:
@@ -148,7 +146,6 @@ game:
 				inc byte [currentRow]			; zwiekszenie obecnego wiersza o dwa - przesuniecie w dol o dwa pola
 				inc byte [currentRow]
 				add di, 320						; przesuniecie rysowania w dol o dwa pola
-				and byte [boundary], 00000101b	; resetowanie wertykalnej pozycji kursora przy granicy
 				jmp moveCursor
 	
 			left:
@@ -157,7 +154,6 @@ game:
 				dec byte [currentColumn]		; zmniejszenie obecnej kolumny o dwa - przesuniecie w lewo o dwa pola
 				dec byte [currentColumn]
 				sub di, 4						; przesuniecie rysowania o dwa pola w lewo
-				and byte [boundary], 00001010b	; resetowanie horyzontalnej pozycji kursora przy granicy
 				jmp moveCursor
 			
 
