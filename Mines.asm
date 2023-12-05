@@ -98,6 +98,8 @@ game:
 				je space
 				jmp game
 
+			; TODO: sprawdzanie bomby w poblizu
+
 			; enter odslania dane pole
 			enter:
 				mov ax, 2F00H				; bialy znak na zielonym tle (2F), znak ' ' (00)
@@ -124,10 +126,11 @@ game:
 			; pojscie w prawo
 			right:
 				cmp dl, 49						; sprawdzanie, czy kursor nie wykracza poza tabele z prawej strony
-				je fail
+				je failRight
 				inc byte [currentColumn]		; zwiekszenie obecnej kolumny o dwa - przesuniecie w prawo o dwa pola
 				inc byte [currentColumn]
 				add di, 4						; przesuniecie rysowania o dwa pola w prawo
+				and byte [boundary], 00001010b	; resetowanie horyzontalnej pozycji kursora przy granicy
 				jmp nofail
 	
 			up:
@@ -136,6 +139,7 @@ game:
 				dec byte [currentRow]			; zmniejszenie obecnego wiersza o dwa - przesuniecie w gore o dwa pola
 				dec byte [currentRow]
 				sub di, 320						; przesuniecie rysowania w gore o dwa pola
+				and byte [boundary], 00000101b	; resetowanie wertykalnej pozycji kursora przy granicy
 				jmp nofail
 
 			down:
@@ -144,6 +148,7 @@ game:
 				inc byte [currentRow]			; zwiekszenie obecnego wiersza o dwa - przesuniecie w dol o dwa pola
 				inc byte [currentRow]
 				add di, 320						; przesuniecie rysowania w dol o dwa pola
+				and byte [boundary], 00000101b	; resetowanie wertykalnej pozycji kursora przy granicy
 				jmp nofail
 	
 			left:
@@ -152,6 +157,22 @@ game:
 				dec byte [currentColumn]		; zmniejszenie obecnej kolumny o dwa - przesuniecie w lewo o dwa pola
 				dec byte [currentColumn]
 				sub di, 4						; przesuniecie rysowania o dwa pola w lewo
+				and byte [boundary], 00001010b	; resetowanie horyzontalnej pozycji kursora przy granicy
+				jmp nofail
+			
+
+			failRight:
+				or byte [boundary], 00000001b	; ustawianie, ze kursor jest przy prawej granicy tablicy
+				jmp game
+			failDown:
+				or byte [boundary], 00000010b	; ustawianie, ze kursor jest przy dolnej granicy tablicy
+				jmp game
+			failLeft:
+				or byte [boundary], 00000100b	; ustawianie, ze kursor jest przy lewej granicy tablicy
+				jmp game
+			failUp:
+				or byte [boundary], 00001000b	; ustawianie, ze kursor jest przy gornej granicy tablicy
+				jmp game
 
 			nofail:
 				mov ah, 0x2						; tryb ustawienia kursora
@@ -159,12 +180,13 @@ game:
 				mov dl, [currentColumn]			; przypisanie do dl liczby obecnej kolumny
 				int 10h							; wywolanie odpowiedniego przerwania
 
-			fail:
-
 	jmp game
 
 currentRow db 3
 currentColumn db 31
+boundary db	12				; pozycja kursora wzgledem granic tablicy. jesli jest przy danej granicy, to trzeba ustawic odpowiwedni bit na 1. 00001111b 0x15
+							; w kolejnosci LSB: prawo, dol, lewo, gora. w poczatkowej pozycji kursor jest w lewym gornym rogu, zatem bedzie to 00001100b czyli 0x12
+
 
 times 510-($-$$) db 0			; zerowanie niewykorzystanego miejsca
 dw 0AA55H						; zakonczenie pliku sygnatura 
