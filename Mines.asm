@@ -135,7 +135,7 @@ game:
 	
 			up:
 				cmp dh, 3						; sprawdzanie, czy kursor nie wykracza poza tabele z gornej strony
-				je fail
+				je failUp
 				dec byte [currentRow]			; zmniejszenie obecnego wiersza o dwa - przesuniecie w gore o dwa pola
 				dec byte [currentRow]
 				sub di, 320						; przesuniecie rysowania w gore o dwa pola
@@ -144,7 +144,7 @@ game:
 
 			down:
 				cmp dh, 21						; sprawdzanie, czy kursor nie wykracza poza tabele z dolnej strony
-				je fail
+				je failDown
 				inc byte [currentRow]			; zwiekszenie obecnego wiersza o dwa - przesuniecie w dol o dwa pola
 				inc byte [currentRow]
 				add di, 320						; przesuniecie rysowania w dol o dwa pola
@@ -153,7 +153,7 @@ game:
 	
 			left:
 				cmp dl, 31						; sprawdzanie, czy kursor nie wykracza poza tabele z lewej strony
-				je fail
+				je failLeft
 				dec byte [currentColumn]		; zmniejszenie obecnej kolumny o dwa - przesuniecie w lewo o dwa pola
 				dec byte [currentColumn]
 				sub di, 4						; przesuniecie rysowania o dwa pola w lewo
