@@ -64,6 +64,48 @@ setup:
 				mov di, 80*3*2 + 31*2
 
 
+		mines:
+			push bx
+			mov cx, 3		; ustawianie licznika petli na 3, beda generowane trzy miny
+			generate:
+				push cx			; zapisz na stosie stan licznika, bo cx bedzie uzyty przy generowaniu wspolrzednych
+				mov dx, [046CH]				; pobranie wartosci tick od momentu uruchomienia programu
+				inc dx						; zwiekszanie tickow trzy razy
+				inc dx
+				inc dx
+				delay:
+					cmp [046CH], dx			; sprawdzanie czy minelo odpowiednio duzo zasu na wpuszczenie do kolejnego etapu generowania
+					jl delay
+
+				mov ax, dx		; przeniesienie mlodszej czesci liczby z cx:dx
+				; jako ze ax to 16 bitow, to od razu mozna uzyskac z niej wspolrzedna x i y, ktore mozna spokojnie zapisac na 8 bitach. mozna sie pokusic o zapisywanie obu wspolrzednych w jednej liczbie 8-bitowej, bo liczba 10 miesci sie na czterech bitach
+				xor ah, ah		; zerowanie starszej czesci ax 
+				mov cl, 8		; ustawienie dzielnika na 8 (plansza min jest 8x8, objasnienie na samym dole w sekcji "Optymalizacja"), by moc uzyskac liczbe modulo 8 w kolejnych krokach
+				div cl			; dzielenie al przez 8, w ah bedzie liczba modulo 8
+				shl ah, 1		; mnozenie razy dwa wspolrzednej x
+				add ah, 31		; dopasowanie do tabelki poprzez dodanie pierwszej mozliwej kolumny
+				mov bl, ah		; wrzucanie do rejestru bl wspolrzednej x
+				mov ax, dx		; ponowne wpisanie liczby tickow zegara z dx do ax
+				shr ah, 8		; zerowanie ah, tym razem w taki sposob, aby jej czesc znalazla sie w al
+				div cl
+				shl ah, 1		; mnozenie razy dwa wspolrzednej y
+				add ah, 3		; dopasowanie wspolrzednej do tabelki poprzez dodanie pierwszego wiersza tablicy
+				mov bh, ah		; wspolrzedna y do rejsetru bh
+				pop cx			; przywracanie licznika petli
+				push bx			; wpisanie wspolrzednych danej miny na stoie	
+				loop generate
+			pop bx				; pobierz pierwsza mine ze stosu
+			mov [mine1X], bl	; przypisanie wspolrzednej x
+			mov [mine1Y], bh	; przypisanie wspolrzednej y
+			pop bx				; druga mina ze stosu
+			mov [mine2X], bl
+			mov [mine2Y], bh
+			pop bx				; trzecia mina ze stosu
+			mov [mine3X], bl
+			mov [mine3Y], bh
+			pop bx
+
+
 		;; opoznianie czasu do nastepnego cyklu, dzieki czemu ekran nie miga zbyt czesto
 		;cycle:
 		;	mov bx, [046CH]				; pobranie wartosci tick od momentu uruchomienia programu
@@ -92,6 +134,12 @@ game:
 				je down
 				cmp al, 'd' ; 'd' - right
 				je right
+				;cmp al, 'x' ;
+				;je debugX
+				;cmp al, 'c'
+				;je debugC
+				;cmp al, 'v'
+				;je debugV
 				cmp al, 0DH ; enter
 				je enter
 				cmp al, 20H
@@ -156,7 +204,25 @@ game:
 				sub di, 4						; przesuniecie rysowania o dwa pola w lewo
 				jmp moveCursor
 			
-
+			; komendy ktore ustawiaja kursor na pozycje poszczegolnych min
+			;debugX:
+			;	mov ah, 0x2
+			;	mov dh, [mine1Y]
+			;	mov dl, [mine1X]
+			;	int 10h
+			;	jmp game
+			;debugC:
+			;	mov ah, 0x2
+			;	mov dh, [mine2Y]
+			;	mov dl, [mine2X]
+			;	int 10h
+			;	jmp game
+			;debugV:
+			;	mov ah, 0x2
+			;	mov dh, [mine3Y]
+			;	mov dl, [mine3X]
+			;	int 10h
+			;	jmp game
 
 			moveCursor:
 				mov ah, 0x2						; tryb ustawienia kursora
@@ -169,6 +235,24 @@ game:
 currentRow db 3
 currentColumn db 31
 
+mine1X db 3
+mine1Y db 31
+mine2X db 0
+mine2Y db 0
+mine3X db 0
+mine3Y db 0
+
 
 times 510-($-$$) db 0			; zerowanie niewykorzystanego miejsca
 dw 0AA55H						; zakonczenie pliku sygnatura 
+
+
+
+
+
+; Optymalizacja:
+;	Generowanie min:
+;		Mimo ze gracz porusza sie po planszy 10x10, to miny moga byc generowane jedynie w polu 8x8 - nie mozna stawiac min przy krancach tablicy.
+;		Dzieki temu zabiegowi nie trzeba pisac kodu dla warunkow brzegowych.
+;		Jesli mina bylaby blisko gracza, to za sprawa tego ograniczenia "strefa zagroczenia" nie bedzie pokazywana poza plansza.
+;
