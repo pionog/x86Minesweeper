@@ -155,15 +155,15 @@ game:
 
 				; mina pierwsza
 				mov ax, [mine1Y]
-				;push ax
+				push ax
 				mov ax, [mine1X]
-				;push ax
+				push ax
 
 				; mina druga
 				mov ax, [mine2Y]
-				;push ax
+				push ax
 				mov ax, [mine2X]
-				;push ax
+				push ax
 
 																										
 				; mina trzecia
@@ -183,10 +183,11 @@ game:
 
 				singleFieldLookUpDyn:
 					xor ax, ax								; zerowanie reejstru ax, ktory posluzy za licznik wystapien min wokol danego pola
+					mov [mineBool], ax
 						horizontalDyn:
 							inc cx							; nalezy juz za wczasu zwiekszyc licznik petli, gdyz jesli w trakcie sprawdzania warunkow wyjdzie, ze wspolrzedna x nie miesci sie w danym przedziale, to nie zwiekszyloby inaczej indeksu
 							cmp cx, 3						; jesli petla wykonuje sie poraz 4, to znaczy, ze wspolrzedna x jakiejkolwiek miny nie miescila sie w przedziale <-1;1> wzgledem przeszukiwanego pola
-							je endFind
+							je verticalDynStart
 						
 							; w tym miejscu powinno wystapic adresowanie indeksowane ([sp+4cx]) lecz nie jest to mozliwe w 16 bitach, dlatego wystepuje tutaj obejscie
 							mov si, cx						; do czystego bx dodac cx
@@ -205,10 +206,12 @@ game:
 							cmp [si], dl
 
 							jg horizontalDyn
-
+							bts [mineBool], cx
+							jmp horizontalDyn
 
 
 							; przejscie do szukania w poprzek
+						verticalDynStart:
 							xor cx, cx						; zerowanie cx
 							dec cx							; cx do -1, by petla zaczynala sie od 0
 						verticalDyn:
@@ -234,14 +237,16 @@ game:
 							cmp [si], dh
 
 							jg verticalDyn
-							; i wspolrzedna x, i wspolrzedna y mieszcza sie w danym przedziale, wiec mina jest blisko danego pola
-							inc ax							; zwiekszenie licznika min o jeden
+							; wspolrzedna y sie zgadza, pora zobaczyc, czy wspolrzedna x danej miny rowniez sie zgadza
+
+							bt [mineBool], cx				; jesli i wspolrzedna x, i wspolrzedna y mieszcza sie w danym przedziale, to mina jest blisko danego pola i w carry flag bedzie 1
+							adc ax, 0						; zwiekszenie licznika min o jeden, jesli mina jest blisko
 							jmp verticalDyn					; sprawdzanie kolejnych min, jesli jeszcze sa
 
 
 				; zakoczono przeszukiwanie liczby min
 				endFind:
-					add sp, 4					; zwalnianie stosu ze wczesniej wrzuconych na niego wspolrzednych min (2*6 = 24)
+					add sp, 12					; zwalnianie stosu ze wczesniej wrzuconych na niego wspolrzednych min (2*6 = 24)
 					cmp ax, 0					; czy zliczono w danym polu jakiekolwiek miny w poblizu
 					jne numberField 
 
@@ -344,7 +349,7 @@ mine2X db 0
 mine2Y db 0
 mine3X db 0
 mine3Y db 0
-
+mineBool db 0
 
 times 510-($-$$) db 0			; zerowanie niewykorzystanego miejsca
 dw 0AA55H						; zakonczenie pliku sygnatura 
