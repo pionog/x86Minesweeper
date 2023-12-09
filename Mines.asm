@@ -138,21 +138,124 @@ game:
 				;je debugX
 				;cmp al, 'c'
 				;je debugC
-				;cmp al, 'v'
-				;je debugV
+				cmp al, 'v'
+				je debugV
 				cmp al, 0DH ; enter
 				je enter
 				cmp al, 20H
 				je space
 				jmp game
 
-			; TODO: sprawdzanie bomby w poblizu
 
 			; enter odslania dane pole
 			enter:
-				mov ax, 2F00H				; bialy znak na zielonym tle (2F), znak ' ' (00)
-				mov [es:di], ax				
-				jmp moveCursor	
+				; zachowanie stanu bx
+
+				; wrzucanie na stos poszczegolnych wspolrzednych min
+
+				; mina pierwsza
+				mov ax, [mine1Y]
+				;push ax
+				mov ax, [mine1X]
+				;push ax
+
+				; mina druga
+				mov ax, [mine2Y]
+				;push ax
+				mov ax, [mine2X]
+				;push ax
+
+																										
+				; mina trzecia
+																										;mov ax, 9					;DEBUG
+																										;mov [mine3Y], ax			;DEBUG
+				mov ax, [mine3Y]
+				push ax
+																										;mov ax, 35					;DEBUG
+																										;mov [mine3X], ax			;DEBUG
+				mov ax, [mine3X]
+				push ax
+
+				; zerowanie cx, ktory bedzie licznikiem petli
+				xor cx, cx
+				; zmniejszanie cx do -1, by obieg petli mozna bylo zaczac od 0
+				dec cx
+
+				singleFieldLookUpDyn:
+					xor ax, ax								; zerowanie reejstru ax, ktory posluzy za licznik wystapien min wokol danego pola
+						horizontalDyn:
+							inc cx							; nalezy juz za wczasu zwiekszyc licznik petli, gdyz jesli w trakcie sprawdzania warunkow wyjdzie, ze wspolrzedna x nie miesci sie w danym przedziale, to nie zwiekszyloby inaczej indeksu
+							cmp cx, 3						; jesli petla wykonuje sie poraz 4, to znaczy, ze wspolrzedna x jakiejkolwiek miny nie miescila sie w przedziale <-1;1> wzgledem przeszukiwanego pola
+							je endFind
+						
+							; w tym miejscu powinno wystapic adresowanie indeksowane ([sp+4cx]) lecz nie jest to mozliwe w 16 bitach, dlatego wystepuje tutaj obejscie
+							mov si, cx						; do czystego bx dodac cx
+							shl si, 2						; przesuniecie w lewo trzy razy powoduje pomnozenie 8 razy
+							add si, sp						; dodanie sp, dzieki czemu jest sp+4cx
+
+							
+							mov dl, [currentColumn]			; przypisanie danej kolumny
+							sub dl, 2						; zmniejszanie kolumny o jedna kolumne w tablicy - sprawdzanie poczatku przedzialu
+
+							cmp [si], dl					; [si] to [sp+4cx]
+							jl horizontalDyn
+							
+							; wspolrzedna x miny jest wieksza rowna (wspolrzednej x szukanego pola - 1)
+							add dl, 4						; przesuniecie o dwa pola w tablicy w prawo
+							cmp [si], dl
+
+							jg horizontalDyn
+
+
+
+							; przejscie do szukania w poprzek
+							xor cx, cx						; zerowanie cx
+							dec cx							; cx do -1, by petla zaczynala sie od 0
+						verticalDyn:
+							inc cx
+							cmp cx, 3
+							je endFind						; zakonczenie petli szukajacej liczby min blisko danego pola
+
+							mov si, cx
+							shl si, 2
+							add si, sp
+							add si, 2
+
+						
+							mov dh, [currentRow]
+							sub dh, 2
+							
+							cmp [si], dh					; [bx] = [sp+4cx+2]
+							jl verticalDyn
+							
+							
+							; wspolrzedna y miny jest wieksza rowna (wspolrzednej y szukanego pola - 1)
+							add dh, 4
+							cmp [si], dh
+
+							jg verticalDyn
+							; i wspolrzedna x, i wspolrzedna y mieszcza sie w danym przedziale, wiec mina jest blisko danego pola
+							inc ax							; zwiekszenie licznika min o jeden
+							jmp verticalDyn					; sprawdzanie kolejnych min, jesli jeszcze sa
+
+
+				; zakoczono przeszukiwanie liczby min
+				endFind:
+					add sp, 4					; zwalnianie stosu ze wczesniej wrzuconych na niego wspolrzednych min (2*6 = 24)
+					cmp ax, 0					; czy zliczono w danym polu jakiekolwiek miny w poblizu
+					jne numberField 
+
+					; nie znaleziono min, w takim razie puste pole
+					mov ax, 2F00H				; bialy znak na zielonym tle (2F), znak ' ' (00)
+					mov [es:di], ax				
+					jmp moveCursor	
+
+					; jest chociaz jedna mina w poblizu
+					numberField:
+					add ax, 2F30H				; bialy znak na zielonym tle (2F), znak '0' (30)
+					mov [es:di], ax				
+					jmp moveCursor	
+
 
 			; spacja ustawia flage na danym polu
 			space:
@@ -217,12 +320,12 @@ game:
 			;	mov dl, [mine2X]
 			;	int 10h
 			;	jmp game
-			;debugV:
-			;	mov ah, 0x2
-			;	mov dh, [mine3Y]
-			;	mov dl, [mine3X]
-			;	int 10h
-			;	jmp game
+			debugV:
+				mov ah, 0x2
+				mov dh, [mine3Y]
+				mov dl, [mine3X]
+				int 10h
+				jmp game
 
 			moveCursor:
 				mov ah, 0x2						; tryb ustawienia kursora
