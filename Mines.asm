@@ -71,9 +71,8 @@ setup:
 			generate:
 				push cx						; zapisz na stosie stan licznika, bo cx bedzie uzyty przy generowaniu wspolrzednych
 				mov dx, [046CH]				; pobranie wartosci tick od momentu uruchomienia programu
-				inc dx						; zwiekszanie tickow trzy razy
-				inc dx
-				inc dx
+				add dx, 3					; zwiekszanie tickow trzy razy
+				
 				delay:
 					cmp [046CH], dx			; sprawdzanie czy minelo odpowiednio duzo zasu na wpuszczenie do kolejnego etapu generowania
 					jl delay
@@ -202,8 +201,7 @@ game:
 							mov si, cx
 							shl si, 2
 							add si, sp
-							inc si
-							inc si
+							add si, 2
 
 						
 							mov dh, [currentRow]
@@ -264,7 +262,7 @@ game:
 			right:
 				cmp dl, 49						; sprawdzanie, czy kursor nie wykracza poza tabele z prawej strony
 				je moveCursor
-				add byte [currentColumn], 1		; zwiekszenie obecnej kolumny o dwa - przesuniecie w prawo o dwa pola
+				add byte [currentColumn], 2		; zwiekszenie obecnej kolumny o dwa - przesuniecie w prawo o dwa pola
 				add di, 4						; przesuniecie rysowania o dwa pola w prawo
 				jmp moveCursor
 			
