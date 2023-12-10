@@ -1,6 +1,8 @@
 ## x86Minesweeper
 Simple version of Minesweeper written entirely in x86 assembly which can be run as a boot sector game.
 <br>
+It was made for my university project for the course System Software.
+<br>
 <br>
 Controls:
 <br>
@@ -26,6 +28,6 @@ Here it is a command to compile with nasm:
 nasm -f bin Mines.asm -o Mines.bin
 <br>
 <br>
-Screenshot of actual game:
+Screenshot of the actual game:
 <br>
 ![Screenshot](https://github.com/pionog/x86Minesweeper/blob/main/screen.png?raw=true)
