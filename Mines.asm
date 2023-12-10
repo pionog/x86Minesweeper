@@ -79,17 +79,17 @@ setup:
 
 				mov ax, dx					; przeniesienie mlodszej czesci liczby z cx:dx
 				; jako ze ax to 16 bitow, to od razu mozna uzyskac z niej wspolrzedna x i y, ktore mozna spokojnie zapisac na 8 bitach. mozna sie pokusic o zapisywanie obu wspolrzednych w jednej liczbie 8-bitowej, bo liczba 10 miesci sie na czterech bitach
-				xor ah, ah					; zerowanie starszej czesci ax 
+				xor ah, ah					; zerowanie starszej czesci ax
 				mov cl, 8					; ustawienie dzielnika na 8 (plansza min jest 8x8, objasnienie na samym dole w sekcji "Optymalizacja"), by moc uzyskac liczbe modulo 8 w kolejnych krokach
 				div cl						; dzielenie al przez 8, w ah bedzie liczba modulo 8
 				shl ah, 1					; mnozenie razy dwa wspolrzednej x
-				add ah, 31					; dopasowanie do tabelki poprzez dodanie pierwszej mozliwej kolumny
+				add ah, 33					; dopasowanie do tabelki poprzez dodanie drugiej mozliwej kolumny
 				mov bl, ah					; wrzucanie do rejestru bl wspolrzednej x
 				mov ax, dx					; ponowne wpisanie liczby tickow zegara z dx do ax
 				shr ah, 8					; zerowanie ah, tym razem w taki sposob, aby jej czesc znalazla sie w al
 				div cl
 				shl ah, 1					; mnozenie razy dwa wspolrzednej y
-				add ah, 3					; dopasowanie wspolrzednej do tabelki poprzez dodanie pierwszego wiersza tablicy
+				add ah, 5					; dopasowanie wspolrzednej do tabelki poprzez dodanie drugiego wiersza tablicy
 				mov bh, ah					; wspolrzedna y do rejsetru bh
 				pop cx						; przywracanie licznika petli
 				push bx						; wpisanie wspolrzednych danej miny na stoie	
@@ -109,9 +109,6 @@ setup:
 
 game:			
 	move:
-		
-		mov dh, [currentRow]				; pobieranie obecnej wartosci wiersza
-		mov dl, [currentColumn]				; pobieranie obecnej wartosci kolumny
 
 		xor ah,ah							; zerowanie ah
 		int 16h								; pobranie klawisza
@@ -175,6 +172,7 @@ game:
 
 							
 							mov dl, [currentColumn]			; przypisanie danej kolumny
+
 							sub dl, 2						; zmniejszanie kolumny o jedna kolumne w tablicy - sprawdzanie poczatku przedzialu
 
 							cmp [si], dl					; [si] to [sp+4cx]
@@ -186,6 +184,12 @@ game:
 
 							jg horizontal
 							bts [mineBool], cx
+							sub dl, 2
+							cmp [si], dl
+							jne horizontal
+							add cx, 4
+							bts [mineBool], cx
+							sub cx, 4
 							jmp horizontal
 
 
@@ -201,7 +205,8 @@ game:
 							mov si, cx
 							shl si, 2
 							add si, sp
-							add si, 2
+							inc si
+							inc si
 
 						
 							mov dh, [currentRow]
@@ -216,12 +221,30 @@ game:
 							cmp [si], dh
 
 							jg vertical
+							sub dh, 2						; powrot do pola startowego
+							cmp [si], dh					; sprawdzanie, czy na szukanym polu jest wspolrzedna y miny
+							jne bool						; jesli nie, to tylko zaznacz niebezpieczenstwo
+
+							; wspolrzedna y miny jest na szukanym polu
+							add cx, 4						; dodaj 4 do licznika, by moc sprawdzic, czy wspolrzedna x miny tez sie zgadza z obencym x
+							bt [mineBool], cx				; sprawdzanie wspolrzednej x, czy tez jest taka sama
+							jc explodeMine					; jesli tak, koniec gry
+							sub cx, 4						; nie zgadza sie, powrot do petli
+							
 							; wspolrzedna y sie zgadza, pora zobaczyc, czy wspolrzedna x danej miny rowniez sie zgadza
-
-							bt [mineBool], cx				; jesli i wspolrzedna x, i wspolrzedna y mieszcza sie w danym przedziale, to mina jest blisko danego pola i w carry flag bedzie 1
-							adc ax, 0						; zwiekszenie licznika min o jeden, jesli mina jest blisko
-							jmp vertical					; sprawdzanie kolejnych min, jesli jeszcze sa
-
+							bool:
+								bt [mineBool], cx				; jesli i wspolrzedna x, i wspolrzedna y mieszcza sie w danym przedziale, to mina jest blisko danego pola i w carry flag bedzie 1
+								adc ax, 0						; zwiekszenie licznika min o jeden, jesli mina jest blisko
+								jmp vertical					; sprawdzanie kolejnych min, jesli jeszcze sa
+				
+				explodeMine:				
+					mov [es:di], word 2F2AH					;  bialy znak na zielonym tle (24), znak '*' (2A)
+					; osobna petla, by nie nadpisywac znakow
+					explodeLoop:						
+						inc di
+						mov [es:di], byte 4FH				; ustawienie czerwonego tla i bialych znakow na ekranie
+						inc di
+					jmp explodeLoop
 
 				; zakoczono przeszukiwanie liczby min
 				endFind:
@@ -229,9 +252,8 @@ game:
 					cmp ax, 0								; czy zliczono w danym polu jakiekolwiek miny w poblizu
 					jne numberField 
 
-					; nie znaleziono min, w takim razie puste pole
-					mov ax, 2F00H							; bialy znak na zielonym tle (2F), znak ' ' (00)
-					mov [es:di], ax				
+					; nie znaleziono min, w takim razie puste pole				
+					mov [es:di], word 2F00H					; bialy znak na zielonym tle (2F), znak ' ' (00)
 					jmp moveCursor	
 
 					; jest chociaz jedna mina w poblizu
@@ -248,14 +270,12 @@ game:
 				je moveCursor
 				cmp al, 0DH						; jesli to pole zawiera flage, to ja zdejmij
 				je takeFlag
-				; ustawienie danego pola jako oznaczonego flaga
-				mov ax, 200DH			
-				mov [es:di], ax
+				; ustawienie danego pola jako oznaczonego flaga	
+				mov [es:di], word 200DH			; czarny znak na zielonym tle (2F), znak nuty (0D)
 				jmp moveCursor
 				; ponowne ustawienie "niewiadomego" pola
 				takeFlag:
-				mov ax, 2F23H
-				mov [es:di], ax
+				mov [es:di], word 2F23H			; bialy znak na zielonym tle (2F), znak '#' (23)
 				jmp moveCursor
 
 			; pojscie w prawo
@@ -288,7 +308,6 @@ game:
 				je moveCursor
 				sub byte [currentColumn], 2		;zmniejszenie obecnej kolumny o dwa - przesuniecie w lewo o dwa pola
 				sub di, 4						; przesuniecie rysowania o dwa pola w lewo
-				jmp moveCursor
 
 			moveCursor:
 				mov ah, 0x2						; tryb ustawienia kursora
@@ -297,9 +316,6 @@ game:
 				int 10h							; wywolanie odpowiedniego przerwania
 
 	jmp game
-
-
-
 
 ;:::::::::::::::::::::::::ZMIENNE:::::::::::::::::::::::::
 
@@ -323,11 +339,30 @@ mineBool db 0
 times 510-($-$$) db 0			; zerowanie niewykorzystanego miejsca
 dw 0AA55H						; zakonczenie pliku sygnatura 
 
-
-
 ;:::::::::::::::::::::::::Optymalizacja:::::::::::::::::::::::::
+;
 ;	Generowanie min:
 ;		Mimo ze gracz porusza sie po planszy 10x10, to miny moga byc generowane jedynie w polu 8x8 - nie mozna stawiac min przy krancach tablicy.
 ;		Dzieki temu zabiegowi nie trzeba pisac kodu dla warunkow brzegowych.
 ;		Jesli mina bylaby blisko gracza, to za sprawa tego ograniczenia "strefa zagroczenia" nie bedzie pokazywana poza plansza.
+;
+;	Sposob generowania min
+;		Z pamieci pobierana jest wartosc tickow zegara od polnocy do momentu uruchomienia komputera.
+;		Nastepnie przeczekiwana jest chwila, by moc uzyskac inna wartosc tickow
+;		Za pomoca odpowiednich dzialan arytmetycznych wyluskiwane sa wspolrzedne danej miny w tabeli 8x8
+;		Niestety byl to prawdopodobnie jedyny sposob, by uzyskac namiastke losowosci w tak malej dostepnej przestrzeni.
+;		Niestety, bo latwo mozna zauwazyc wzor, w jaki ukladaja sie miny na planszy.
+;
+;	Wykrywanie min
+;		Ze wzgledu na malo miejsca, wykrywanie min polega jedynie na tym, ze sprawdza sie, czy w poblizu pola, na ktorym znajduje sie kursor, sa miny.
+;		W zamysle mialo to byc przeszukiwanie pola 3x3, lecz niestety ograniczenia sprawily, ze moglo to byc pojedyncze pole.
+;
+;	Koniec gry:
+;		Jako ze zostawilem wykrywanie zakonczenia gry na sam koniec, to juz nie bylo miejsca do zaimplementowania tego w pelni.
+;		Koniec gry nastepuje jedynie wtedy, gdy gracz nadepnie na mine. Wtedy zmienia sie kolor tla na czerwony i nie mozna sie poruszac.
+;		Nalezy wtedy wylaczyc maszyne.
+;
+;	Dzialanie bezposrednio na pamieci
+;		W niektorych sytuacjach zamiast zapisywac danej stalej do rejestru a nastepnie ow rejestru do pamieci, mozna od razu zapisac stala w pamieci.
+;		Okazalo sie to zbawienne, bo dzieki temu mozna bylo zaoszczedzic kilka bajtow
 ;
